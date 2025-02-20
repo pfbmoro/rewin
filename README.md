@@ -1,6 +1,7 @@
 # Rewin 🚀
 
 ![Rewin Logo](rewin_logo.png)
+
 A lightning-fast desktop application for setting up React + Tailwind CSS projects using Vite.
 
 Rewin is a lightweight GUI application built with Python and CustomTkinter that automates the setup of a React project with Vite and Tailwind CSS (version 4). It simplifies the process of creating a modern web development environment with a single click.
