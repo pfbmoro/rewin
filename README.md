@@ -1,4 +1,6 @@
-# Rewin 🚀
+# Rewin – React + Vite + Tailwind 4 – Setup Tool 🚀
+
+![Rewin Logo](rewin_logo.png)
 
 A lightning-fast desktop application for setting up React + Tailwind CSS projects using Vite.
 
