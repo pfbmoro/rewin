@@ -69,37 +69,7 @@ class RewinApp:
         self.link_label.bind("<Button-1>", lambda e: self.open_link())
         self.link_url = ""
 
-        # Tech logos
-        logo_frame = ctk.CTkFrame(root, fg_color="#F5F5F5")
-        logo_frame.pack(side=ctk.BOTTOM, pady=10)
-
-        try:
-            react_img = ctk.CTkImage(light_image=Image.open("react_logo.png"), size=(50, 50))
-            react_label = ctk.CTkLabel(logo_frame, image=react_img, text="")
-            react_label.pack(side=ctk.LEFT, padx=5)
-        except Exception as e:
-            print(f"Error loading React logo: {e}")
-            react_label = ctk.CTkLabel(logo_frame, text="⚛️", font=("Arial", 20))
-            react_label.pack(side=ctk.LEFT, padx=5)
-
-        try:
-            vite_img = ctk.CTkImage(light_image=Image.open("vite_logo.png"), size=(50, 50))
-            vite_label = ctk.CTkLabel(logo_frame, image=vite_img, text="")
-            vite_label.pack(side=ctk.LEFT, padx=5)
-        except Exception as e:
-            print(f"Error loading Vite logo: {e}")
-            vite_label = ctk.CTkLabel(logo_frame, text="V", font=("Arial", 20))
-            vite_label.pack(side=ctk.LEFT, padx=5)
-
-        try:
-            tailwind_img = ctk.CTkImage(light_image=Image.open("tailwind_logo.png"), size=(50, 50))
-            tailwind_label = ctk.CTkLabel(logo_frame, image=tailwind_img, text="")
-            tailwind_label.pack(side=ctk.LEFT, padx=5)
-        except Exception as e:
-            print(f"Error loading Tailwind logo: {e}")
-            tailwind_label = ctk.CTkLabel(logo_frame, text="💨", font=("Arial", 20))
-            tailwind_label.pack(side=ctk.LEFT, padx=5)
-
+        # Initialize dev_process
         self.dev_process = None
 
     def select_directory(self):
@@ -132,21 +102,28 @@ class RewinApp:
             # Check if npm is installed
             subprocess.run(["npm", "--version"], check=True, capture_output=True)
 
-            # Commands equivalent to the bash script
-            commands = [
-                f"npm create vite@latest {project_name} -- --template react",
-                "npm install -D tailwindcss@4",
-                "npm install",
-            ]
-
-            # Change to selected directory
+            # Initialize new React project with Vite
             os.chdir(self.selected_dir)
+            subprocess.run(f"npm create vite@latest {project_name} -- --template react", 
+                         shell=True, check=True, capture_output=True)
+            
+            # Change into project directory
+            os.chdir(project_name)
 
-            # Execute commands
-            subprocess.run(commands[0], shell=True, check=True, capture_output=True)
-            os.chdir(project_name)  # Move into project directory
-            for cmd in commands[1:]:
-                subprocess.run(cmd, shell=True, check=True, capture_output=True)
+            # Install Tailwind CSS and Vite plugin
+            subprocess.run("npm install tailwindcss @tailwindcss/vite", 
+                         shell=True, check=True, capture_output=True)
+
+            # Write vite.config.js with Tailwind plugin
+            with open("vite.config.js", "w") as f:
+                f.write('''import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+''')
 
             # Write tailwind.config.js
             with open("tailwind.config.js", "w") as f:
@@ -159,43 +136,46 @@ export default {
 }
 ''')
 
-            # Write vite.config.js
-            with open("vite.config.js", "w") as f:
-                f.write('''import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  css: {
-    preprocessorOptions: {
-      css: {}
-    }
-  }
-})
-''')
-
-            # Update src/index.css
+            # Update src/index.css with Tailwind import
             with open("src/index.css", "w") as f:
                 f.write('@import "tailwindcss";\n')
 
+            # Ensure index.css is imported in main.jsx
+            main_file = "src/main.jsx"
+            if os.path.exists(main_file):
+                with open(main_file, "r") as f:
+                    content = f.read()
+                
+                # Add import if it doesn't exist
+                if "import './index.css'" not in content:
+                    import_pos = content.find("import React from 'react'")
+                    if import_pos != -1:
+                        new_content = content[:import_pos] + "import './index.css';\n" + content[import_pos:]
+                        with open(main_file, "w") as f:
+                            f.write(new_content)
+
             # Start the dev server in the background
-            self.dev_process = subprocess.Popen(["npm", "run", "dev"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.dev_process = subprocess.Popen(["npm", "run", "dev"], 
+                                              stdout=subprocess.PIPE, 
+                                              stderr=subprocess.PIPE)
             
             # Wait briefly to ensure server starts
             time.sleep(2)
             
             if self.dev_process.poll() is None:  # Check if process is still running
                 self.link_url = "http://localhost:5173"
-                self.status.configure(text=f"Success! Project '{project_name}' created at:\n{project_path}", text_color="#007BFF")
+                self.status.configure(text=f"Success! Project '{project_name}' created at:\n{project_path}", 
+                                    text_color="#007BFF")
                 self.link_label.configure(text="Project link")
             else:
                 raise Exception("Development server failed to start")
 
         except subprocess.CalledProcessError as e:
-            self.status.configure(text=f"Error: {e.stderr.decode() if e.stderr else 'Command failed'}", text_color="#FF0000")
+            self.status.configure(text=f"Error: {e.stderr.decode() if e.stderr else 'Command failed'}", 
+                                text_color="#FF0000")
         except FileNotFoundError:
-            self.status.configure(text="Error: npm not found. Please install Node.js.", text_color="#FF0000")
+            self.status.configure(text="Error: npm not found. Please install Node.js.", 
+                                text_color="#FF0000")
         except Exception as e:
             self.status.configure(text=f"Error: {str(e)}", text_color="#FF0000")
 
